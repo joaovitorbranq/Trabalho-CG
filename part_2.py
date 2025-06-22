@@ -39,7 +39,7 @@ for i in range(qtd_faces):
 print(hsv_colors)
 
 # ======== PROJEÇÃO ORTOGRÁFICA XY E PLOTAGEM ========
-vertices_2d = [(x, y) for (x, y, z) in vertices]
+vertices_2d = [(x, y) for (x, y, z) in vertices] # ignora o eixo z
 
 fig, ax = plt.subplots()
 patches = []
