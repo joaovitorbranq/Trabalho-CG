@@ -18,8 +18,8 @@ vertices = [
 ]
 
 faces = [
-    [4, 3, 2, 1, 0],             # Base invertida para corrigir a normal
-    [5, 6, 7, 8, 9],             # Topo
+    [4, 3, 2, 1, 0],             # base invertida para corrigir a normal
+    [5, 6, 7, 8, 9],             # topo
     [0, 1, 6, 5],                # lateral 1
     [1, 2, 7, 6],                # lateral 2
     [2, 3, 8, 7],                # lateral 3
@@ -29,54 +29,73 @@ faces = [
 
 
 # ======== CONFIGURAÇÃO DA LUZ ========
-# Luz vindo da frente (direção Z positiva)
-light_dir = np.array([0, 0, 1])
-light_dir = light_dir / np.linalg.norm(light_dir)
+# luz vindo da frente (direção Z positiva)
+direcao_luz = np.array([0, 1, 1])
+direcao_luz = direcao_luz / np.linalg.norm(direcao_luz) # normaliza
 
-# ======== DEFINIR UMA ÚNICA COR BASE (HUE CONSTANTE) ========
-H = 200 / 360  # tom azul
-S_max = 1
-V_max = 1
+
 
 
 # ======== CÁLCULO DA NORMAL DE UMA FACE ========
 def face_normal(face):
+    """
+    Calcula a normal de uma face.
+    """
+
+    # define os vértices da face
     v0 = np.array(vertices[face[0]])
     v1 = np.array(vertices[face[1]])
     v2 = np.array(vertices[face[2]])
-    edge1 = v1 - v0
-    edge2 = v2 - v0
-    normal = np.cross(edge1, edge2)
-    normal = normal / np.linalg.norm(normal)
+
+    # calcula os vetores de aresta
+    vetor1 = v1 - v0
+    vetor2 = v2 - v0
+
+    # calcula a normal
+    normal = np.cross(vetor1, vetor2) # produto vetorial
+    normal = normal / np.linalg.norm(normal) # normaliza
     return normal
 
 
-# ======== CÁLCULO DA ILUMINAÇÃO (Luz ambiente + difusa) ========
-def compute_color(normal):
-    ambient = 0.3
-    ndotl = np.dot(normal, light_dir)
-    diffuse = max(ndotl, 0)
+# ======== CÁLCULO DA ILUMINAÇÃO (Luz ambiente + direta) ========
+def compute_color(normal_face):
+    """
+    Calcula a cor de uma face.
+    Recebe a normal da face como parâmetro
+    """
+    hue = 200 / 360  # tom azul
+    luz_ambiente = 0.3 # luz ambiente de 30%
+    cos_theta = np.dot(normal_face, direcao_luz) # cosseno do angulo entre a normal e a luz
+    luz_direta = max(cos_theta, 0)
 
-    intensity = ambient + 0.8 * diffuse
-    intensity = min(intensity, 1)  # garantir limite máximo
+    intensidade = luz_ambiente + 0.8 * luz_direta
+    intensidade = min(intensidade, 1)  # garantir limite máximo de 100%
 
-    # Saturação constante, só o brilho varia
-    r, g, b = colorsys.hsv_to_rgb(H, S_max, V_max * intensity)
+    saturacao = luz_ambiente + 0.8 * luz_direta
+    saturacao = min(saturacao, 1)  # garantir limite máximo de 100%
+
+    # Hue constante, saturação e intensidade variam com a iluminação
+    r, g, b = colorsys.hsv_to_rgb(hue, saturacao, intensidade)
     return (r, g, b)
 
 
 # ======== CÁLCULO DA PROFUNDIDADE PARA O ALGORITMO DO PINTOR ========
-def face_depth(face):
+def profundidade_face(face):
+    """
+    Calcula uma média de profundidade para cada face.
+    Prioriza o eixo Z (profundidade), que representa a distância do observador.
+    """
     zs = [vertices[i][2] for i in face]
     ys = [vertices[i][1] for i in face]
     xs = [vertices[i][0] for i in face]
-    return np.mean(zs) + np.mean(ys) * 0.5  # prioriza Z e um pouco de Y para melhor percepção
+    return np.mean(zs) + np.mean(ys)
 
 
-# ======== ORDENAR FACES (ALGORITMO DO PINTOR) ========
+# cria uma lista ordenada de índices das faces, 
+# ordenada da face mais distante para a mais próxima (algoritmo do pintor)
 face_order = sorted(
     range(len(faces)),
-    key=lambda idx: face_depth(faces[idx]),
+    key=lambda idx: profundidade_face(faces[idx]),
     reverse=True  # desenha as mais distantes primeiro
 )
 
@@ -118,6 +137,6 @@ ax.set_zlim(-1, 2)
 
 # Aspecto e título
 ax.set_box_aspect([1, 1, 1])
-ax.set_title('Prisma Pentagonal com Iluminação (Algoritmo do Pintor)')
+ax.set_title('Prisma Pentagonal com Iluminação')
 
 plt.show()
