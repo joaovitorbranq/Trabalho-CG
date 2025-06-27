@@ -3,140 +3,112 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 import colorsys
 
-# ======== DEFINIÇÃO DO OBJETO (Prisma Pentagonal) ========
-vertices = [
-    (2, 0, 0),     # v0
-    (1, 2, 0),     # v1
-    (-1, 2, 0),    # v2
-    (-2, 0, 0),    # v3
-    (0, -2, 0),    # v4
-    (2, 0, 1),     # v5
-    (1, 2, 1),     # v6
-    (-1, 2, 1),    # v7
-    (-2, 0, 1),    # v8
-    (0, -2, 1)     # v9
-]
+# ======== FUNÇÕES AUXILIARES ========
 
-faces = [
-    [4, 3, 2, 1, 0],             # base invertida para corrigir a normal
-    [5, 6, 7, 8, 9],             # topo
-    [0, 1, 6, 5],                # lateral 1
-    [1, 2, 7, 6],                # lateral 2
-    [2, 3, 8, 7],                # lateral 3
-    [3, 4, 9, 8],                # lateral 4
-    [4, 0, 5, 9]                 # lateral 5
-]
-
-
-# ======== CONFIGURAÇÃO DA LUZ ========
-# luz vindo da frente (direção Z positiva)
-direcao_luz = np.array([0, 1, 1])
-direcao_luz = direcao_luz / np.linalg.norm(direcao_luz) # normaliza
-
-
-
-
-# ======== CÁLCULO DA NORMAL DE UMA FACE ========
-def face_normal(face):
-    """
-    Calcula a normal de uma face.
-    """
-
-    # define os vértices da face
+def face_normal(face, vertices):
     v0 = np.array(vertices[face[0]])
     v1 = np.array(vertices[face[1]])
     v2 = np.array(vertices[face[2]])
-
-    # calcula os vetores de aresta
     vetor1 = v1 - v0
     vetor2 = v2 - v0
+    normal = np.cross(vetor1, vetor2)
+    return normal / np.linalg.norm(normal)
 
-    # calcula a normal
-    normal = np.cross(vetor1, vetor2) # produto vetorial
-    normal = normal / np.linalg.norm(normal) # normaliza
-    return normal
-
-
-# ======== CÁLCULO DA ILUMINAÇÃO (Luz ambiente + direta) ========
 def compute_color(normal_face):
-    """
-    Calcula a cor de uma face.
-    Recebe a normal da face como parâmetro
-    """
-    hue = 200 / 360  # tom azul
-    luz_ambiente = 0.3 # luz ambiente de 30%
-    cos_theta = np.dot(normal_face, direcao_luz) # cosseno do angulo entre a normal e a luz
+    hue = 200 / 360  # azul
+    luz_ambiente = 0.3
+    cos_theta = np.dot(normal_face, direcao_luz)
     luz_direta = max(cos_theta, 0)
-
-    intensidade = luz_ambiente + 0.8 * luz_direta
-    intensidade = min(intensidade, 1)  # garantir limite máximo de 100%
-
-    saturacao = luz_ambiente + 0.8 * luz_direta
-    saturacao = min(saturacao, 1)  # garantir limite máximo de 100%
-
-    # Hue constante, saturação e intensidade variam com a iluminação
+    intensidade = min(luz_ambiente + 0.8 * luz_direta, 1)
+    saturacao = min(luz_ambiente + 0.8 * luz_direta, 1)
     r, g, b = colorsys.hsv_to_rgb(hue, saturacao, intensidade)
     return (r, g, b)
 
-
-# ======== CÁLCULO DA PROFUNDIDADE PARA O ALGORITMO DO PINTOR ========
-def profundidade_face(face):
-    """
-    Calcula uma média de profundidade para cada face.
-    Prioriza o eixo Z (profundidade), que representa a distância do observador.
-    """
+def profundidade_face(face, vertices):
     zs = [vertices[i][2] for i in face]
     ys = [vertices[i][1] for i in face]
-    xs = [vertices[i][0] for i in face]
     return np.mean(zs) + np.mean(ys)
 
+def transladar(vertices, dx, dy, dz):
+    return [(x+dx, y+dy, z+dz) for (x, y, z) in vertices]
 
-# cria uma lista ordenada de índices das faces, 
-# ordenada da face mais distante para a mais próxima (algoritmo do pintor)
-face_order = sorted(
-    range(len(faces)),
-    key=lambda idx: profundidade_face(faces[idx]),
-    reverse=True  # desenha as mais distantes primeiro
+# ======== LUZ ========
+direcao_luz = np.array([0, 0, 1])
+direcao_luz = direcao_luz / np.linalg.norm(direcao_luz)
+
+# ======== PRISMA BASE ========
+vertices_base = [
+    (2, 0, 0), (1, 2, 0), (-1, 2, 0), (-2, 0, 0), (0, -2, 0),
+    (2, 0, 1), (1, 2, 1), (-1, 2, 1), (-2, 0, 1), (0, -2, 1)
+]
+
+faces_base = [
+    [4, 3, 2, 1, 0],  # base
+    [5, 6, 7, 8, 9],  # topo
+    [0, 1, 6, 5],
+    [1, 2, 7, 6],
+    [2, 3, 8, 7],
+    [3, 4, 9, 8],
+    [4, 0, 5, 9]
+]
+
+# ======== CRIA OS DOIS PRISMAS ========
+vertices1 = vertices_base
+faces1 = faces_base
+
+# Prisma 2 deslocado para o lado e à frente
+vertices2 = transladar(vertices_base, dx=5, dy=2.5, dz=0.0)
+faces2 = faces_base
+
+# ======== COMBINANDO TUDO COM INDEXAÇÃO ========
+vertices_total = vertices1 + vertices2
+faces_total = []
+
+# Faces do primeiro prisma
+faces_total.extend([(face, vertices1) for face in faces1])
+
+# Faces do segundo prisma (ajustando índices)
+offset = len(vertices1)
+faces_total.extend([([i + offset for i in face], vertices2) for face in faces2])
+
+# ======== ORDENAR FACES PELO ALGORITMO DO PINTOR ========
+faces_ordenadas = sorted(
+    faces_total,
+    key=lambda item: profundidade_face(item[0], vertices_total),
+    reverse=True
 )
 
-
-# ======== CRIAR FIGURA E EIXO 3D ========
+# ======== PLOTAGEM ========
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-# ======== DESENHAR FACES COM CORES ========
 poly3d = []
 face_colors = []
 
-for idx in face_order:
-    face = faces[idx]
-    pts = [vertices[i] for i in face]
-    poly3d.append(pts)
-    normal = face_normal(face)
+for face_indices, _ in faces_ordenadas:
+    pts = [vertices_total[i] for i in face_indices]
+    normal = face_normal(face_indices, vertices_total)
     color = compute_color(normal)
+    poly3d.append(pts)
     face_colors.append(color)
 
-# Adiciona as faces ao plot
 collection = Poly3DCollection(poly3d, facecolors=face_colors, edgecolors='black', linewidths=1)
 ax.add_collection3d(collection)
 
-# ======== DESENHAR EIXOS X, Y, Z ========
+# Eixos
 comprimento = 3
 ax.quiver(0, 0, 0, comprimento, 0, 0, color='r', arrow_length_ratio=0.1)
 ax.quiver(0, 0, 0, 0, comprimento, 0, color='g', arrow_length_ratio=0.1)
 ax.quiver(0, 0, 0, 0, 0, comprimento, color='b', arrow_length_ratio=0.1)
-
 ax.text(comprimento, 0, 0, 'X', color='r')
 ax.text(0, comprimento, 0, 'Y', color='g')
 ax.text(0, 0, comprimento, 'Z', color='b')
 
-# ======== CONFIGURAÇÕES DOS LIMITES ========
-ax.set_xlim(-3, 3)
-ax.set_ylim(-3, 3)
+# Limites da cena
+ax.set_xlim(-3, 6)
+ax.set_ylim(-3, 6)
 ax.set_zlim(-1, 2)
-
-# Aspecto e título
 ax.set_box_aspect([1, 1, 1])
-ax.set_title('Prisma Pentagonal com Iluminação')
+ax.set_title('Dois Prismas com iluminação e algoritmo do pintor')
 
 plt.show()
