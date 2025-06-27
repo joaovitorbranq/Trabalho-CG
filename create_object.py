@@ -24,7 +24,7 @@ arestas = [
 # total de 15 arestas
 
 faces = [
-    [0, 1, 2, 3, 4],             # base com 5 pontos (pentágono)
+    [4, 3, 2, 1, 0],             # base com 5 pontos (pentágono)
     [5, 6, 7, 8, 9],             # topo com 5 pontos (pentágono)
     [0, 1, 6, 5],                # lateral 1
     [1, 2, 7, 6],                # lateral 2
