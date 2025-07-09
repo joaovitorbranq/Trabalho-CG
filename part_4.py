@@ -1,124 +1,88 @@
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
-# ======== PRISMA BASE ========
 vertices = [
-    (2, 0, 0), (1, 2, 0), (-1, 2, 0), (-2, 0, 0), (0, -2, 0),
-    (2, 0, 1), (1, 2, 1), (-1, 2, 1), (-2, 0, 1), (0, -2, 1)
+    (2, 0, 0),     # v1 - 0
+    (1, 2, 0),     # v2 - 1
+    (-1, 2, 0),    # v3 - 2
+    (-2, 0, 0),    # v4 - 3
+    (0, -2, 0),    # v5 - 4
+    (2, 0, 1),     # v6 - 5
+    (1, 2, 1),     # v7 - 6
+    (-1, 2, 1),    # v8 - 7
+    (-2, 0, 1),    # v9 - 8
+    (0, -2, 1)     # v10 - 9
 ]
 
-faces_planas = [
-    [4, 3, 2, 1, 0],  # base inferior
-    [0, 1, 6, 5], [1, 2, 7, 6], [2, 3, 8, 7],
-    [3, 4, 9, 8], [4, 0, 5, 9]  # laterais
+arestas = [
+    (0, 1), (1, 2), (2, 3), (3, 4), (4, 0),       # base
+    (5, 6), (6, 7), (7, 8), (8, 9), (9, 5),       # topo
+    (0, 5), (1, 6), (2, 7), (3, 8), (4, 9)        # laterais
 ]
 
-# ======== ILUMINAÇÃO (Phong) ========
-light_dir = np.array([0, 0, 1])
-view_dir = np.array([0, 0, 1])
-light_color = np.array([1.0, 1.0, 0.5])  # luz amarelada
-ka, kd, ks = 0.2, 0.5, 0.3
-shininess = 32
+arestas_remover = [(0, 1), (1, 6), (6, 5), (5, 0)]
 
-def phong(normal):
-    normal = normal / np.linalg.norm(normal)
-    l = light_dir / np.linalg.norm(light_dir)
-    v = view_dir / np.linalg.norm(view_dir)
-    r = 2 * np.dot(normal, l) * normal - l
-    ambient = ka * light_color
-    diffuse = kd * max(np.dot(normal, l), 0) * light_color
-    specular = ks * max(np.dot(v, r), 0) ** shininess * light_color
-    return np.clip(ambient + diffuse + specular, 0, 1)
-
-# ======== SUPERFÍCIE CURVA SUAVIZADA NO TOPO ========
-def gerar_domo_pentagonal(pontos, centro_elevado, niveis=5):
-    """
-    pontos: lista dos 5 vértices da face superior
-    centro_elevado: ponto central elevado no eixo Z
-    niveis: quantidade de anéis entre borda e centro
-    """
-    superf_vertices = []
-    superf_faces = []
-
-    for i in range(niveis + 1):
-        t = i / niveis
-        anel = [(1 - t) * p + t * centro_elevado for p in pontos]
-        superf_vertices.append(anel)
-
-    # Conectar anéis com faces quadradas (2 triângulos por quadrado)
-    for i in range(niveis):
-        atual = superf_vertices[i]
-        proximo = superf_vertices[i + 1]
-        for j in range(len(pontos)):
-            a = atual[j]
-            b = atual[(j + 1) % 5]
-            c = proximo[(j + 1) % 5]
-            d = proximo[j]
-            superf_faces.append([a, b, c, d])
-
-    # Achatar lista de vértices e gerar índices
-    flat_vertices = []
-    index_map = {}
-    index = 0
-    for anel in superf_vertices:
-        for v in anel:
-            key = tuple(np.round(v, 8))
-            if key not in index_map:
-                index_map[key] = index
-                flat_vertices.append(v)
-                index += 1
-
-    face_indices = []
-    for face in superf_faces:
-        indices = [index_map[tuple(np.round(p, 8))] for p in face]
-        face_indices.append(indices)
-
-    return flat_vertices, face_indices
-
-# Pegar vértices do topo
-topo_ids = [5, 6, 7, 8, 9]
-pontos_topo = [np.array(vertices[i]) for i in topo_ids]
-centro = np.mean(pontos_topo, axis=0)
-centro[2] += 1.2  # elevação real para curvatura perceptível
-
-malha_vertices, malha_faces = gerar_domo_pentagonal(pontos_topo, centro, niveis=10)
-
-# ======== PLOTAGEM ========
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-# Desenhar faces planas do prisma
-for face in faces_planas:
-    pts = [vertices[i] for i in face]
-    poly = Poly3DCollection([pts], facecolors='lightblue', edgecolors='black', alpha=0.6)
-    ax.add_collection3d(poly)
-
-# Desenhar superfície suavemente curva
-for face in malha_faces:
-    pts = [malha_vertices[i] for i in face]
-    v1 = pts[1] - pts[0]
-    v2 = pts[3] - pts[0]
-    normal = np.cross(v1, v2)
-    if np.linalg.norm(normal) == 0:
+# Desenhar arestas (wireframe) - pula as da face curva
+for (i, j) in arestas:
+    if (i, j) in arestas_remover or (j, i) in arestas_remover:
         continue
-    color = phong(normal)
-    patch = Poly3DCollection([pts], facecolors=[color], edgecolors='gray')
-    ax.add_collection3d(patch)
+    x = [vertices[i][0], vertices[j][0]]
+    y = [vertices[i][1], vertices[j][1]]
+    z = [vertices[i][2], vertices[j][2]]
+    ax.plot(x, y, z, 'k')
 
-# Eixos
-ax.quiver(0, 0, 0, 3, 0, 0, color='r')
-ax.quiver(0, 0, 0, 0, 3, 0, color='g')
-ax.quiver(0, 0, 0, 0, 0, 3, color='b')
-ax.text(3, 0, 0, 'X', color='r')
-ax.text(0, 3, 0, 'Y', color='g')
-ax.text(0, 0, 3, 'Z', color='b')
+# Face curva (lateral 1)
+v0 = np.array(vertices[0])
+v1 = np.array(vertices[1])
+v6 = np.array(vertices[6])
+v5 = np.array(vertices[5])
 
-# Visual
+n = 40
+
+baixo = np.linspace(v0, v1, n)
+cima  = np.linspace(v5, v6, n)
+
+X = []
+Y = []
+Z = []
+curvatura = 1.2
+
+for i in range(n):
+    linha = np.linspace(baixo[i], cima[i], n)
+    t = np.linspace(0, 1, n)
+    curva = curvatura * (t - 0.5)**2
+    normal = np.cross(v1-v0, v5-v0)
+    normal = normal / np.linalg.norm(normal)
+    offset = curvatura * 0.25  # offset para alinhar a superfície nos vértices!
+    linha_curva = linha - curva[:, None] * normal + offset * normal
+    X.append(linha_curva[:, 0])
+    Y.append(linha_curva[:, 1])
+    Z.append(linha_curva[:, 2])
+
+X = np.array(X)
+Y = np.array(Y)
+Z = np.array(Z)
+
+brilho = np.clip(0.4 + 0.6 * (Z - np.min(Z)) / (np.max(Z) - np.min(Z)), 0, 1)
+ax.plot_surface(X, Y, Z, facecolors=plt.cm.YlOrBr(brilho), shade=True, alpha=0.8, edgecolor='none')
+
+ax.view_init(elev=30, azim=45)
+
+comprimento = 3
+ax.quiver(0, 0, 0, comprimento, 0, 0, color='r', arrow_length_ratio=0.1)
+ax.quiver(0, 0, 0, 0, comprimento, 0, color='g', arrow_length_ratio=0.1)
+ax.quiver(0, 0, 0, 0, 0, comprimento, color='b', arrow_length_ratio=0.1)
+ax.text(comprimento, 0, 0, 'X', color='r')
+ax.text(0, comprimento, 0, 'Y', color='g')
+ax.text(0, 0, comprimento, 'Z', color='b')
+
 ax.set_xlim(-3, 3)
 ax.set_ylim(-3, 3)
-ax.set_zlim(-1, 3.5)
+ax.set_zlim(-1, 2)
 ax.set_box_aspect([1, 1, 1])
-ax.set_title("Parte 4: Topo Curvo Suavizado com Sombreamento Phong")
-
+ax.set_title("Prisma Pentagonal com Uma Face Lateral Curva (Encaixe Perfeito)")
 plt.show()
