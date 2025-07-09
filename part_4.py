@@ -33,7 +33,7 @@ for (i, j) in arestas:
     x = [vertices[i][0], vertices[j][0]]
     y = [vertices[i][1], vertices[j][1]]
     z = [vertices[i][2], vertices[j][2]]
-    ax.plot(x, y, z, 'k')
+    ax.plot(x, y, z, 'k', linewidth=2)
 
 # Face curva (lateral 1)
 v0 = np.array(vertices[0])
@@ -70,6 +70,17 @@ Z = np.array(Z)
 brilho = np.clip(0.4 + 0.6 * (Z - np.min(Z)) / (np.max(Z) - np.min(Z)), 0, 1)
 ax.plot_surface(X, Y, Z, facecolors=plt.cm.YlOrBr(brilho), shade=True, alpha=0.8, edgecolor='none')
 
+# === Desenha as arestas da face curva ===
+
+# 1. Bordas verticais
+ax.plot(X[0], Y[0], Z[0], 'k', linewidth=2)     # lado baixo (v0->v1)
+ax.plot(X[-1], Y[-1], Z[-1], 'k', linewidth=2)  # lado cima (v5->v6)
+
+# 2. Bordas horizontais
+ax.plot(X[:,0], Y[:,0], Z[:,0], 'k', linewidth=2)     # lado esquerdo (v0->v5)
+ax.plot(X[:,-1], Y[:,-1], Z[:,-1], 'k', linewidth=2)  # lado direito (v1->v6)
+
+# Rotaciona para facilitar a visualização
 ax.view_init(elev=30, azim=45)
 
 comprimento = 3
