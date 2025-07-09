@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
+# Definição dos vértices e arestas
 vertices = [
     (2, 0, 0),     # v1 - 0
     (1, 2, 0),     # v2 - 1
@@ -26,7 +27,7 @@ arestas_remover = [(0, 1), (1, 6), (6, 5), (5, 0)]
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-# Desenhar arestas (wireframe) - pula as da face curva
+# Desenhar arestas (exceto as da face curva)
 for (i, j) in arestas:
     if (i, j) in arestas_remover or (j, i) in arestas_remover:
         continue
@@ -35,7 +36,7 @@ for (i, j) in arestas:
     z = [vertices[i][2], vertices[j][2]]
     ax.plot(x, y, z, 'k', linewidth=2)
 
-# Face curva (lateral 1)
+# Face curva (lateral 1: v0-v1-v6-v5)
 v0 = np.array(vertices[0])
 v1 = np.array(vertices[1])
 v6 = np.array(vertices[6])
@@ -57,7 +58,7 @@ for i in range(n):
     curva = curvatura * (t - 0.5)**2
     normal = np.cross(v1-v0, v5-v0)
     normal = normal / np.linalg.norm(normal)
-    offset = curvatura * 0.25  # offset para alinhar a superfície nos vértices!
+    offset = curvatura * 0.25
     linha_curva = linha - curva[:, None] * normal + offset * normal
     X.append(linha_curva[:, 0])
     Y.append(linha_curva[:, 1])
@@ -67,22 +68,55 @@ X = np.array(X)
 Y = np.array(Y)
 Z = np.array(Z)
 
-brilho = np.clip(0.4 + 0.6 * (Z - np.min(Z)) / (np.max(Z) - np.min(Z)), 0, 1)
-ax.plot_surface(X, Y, Z, facecolors=plt.cm.YlOrBr(brilho), shade=True, alpha=0.8, edgecolor='none')
+# === Sombreamento de Phong real ===
+light_pos = np.array([3, 3, 5])
+light_color = np.array([1.0, 1.0, 0.3])  # Amarelado (tabela 5.1)
+ka = 0.15  # Ambiente
+kd = 0.6   # Difuso
+ks = 0.8   # Especular
+shininess = 30
+view_pos = np.array([0, 0, 8])
 
-# === Desenha as arestas da face curva ===
+def calc_normal(i, j):
+    # Vetores tangentes locais
+    if i < n-1:
+        dXdi = np.array([X[i+1,j]-X[i,j], Y[i+1,j]-Y[i,j], Z[i+1,j]-Z[i,j]])
+    else:
+        dXdi = np.array([X[i,j]-X[i-1,j], Y[i,j]-Y[i-1,j], Z[i,j]-Z[i-1,j]])
+    if j < n-1:
+        dXdj = np.array([X[i,j+1]-X[i,j], Y[i,j+1]-Y[i,j], Z[i,j+1]-Z[i,j]])
+    else:
+        dXdj = np.array([X[i,j]-X[i,j-1], Y[i,j]-Y[i,j-1], Z[i,j]-Z[i,j-1]])
+    nrm = np.cross(dXdi, dXdj)
+    nrm = nrm / (np.linalg.norm(nrm) + 1e-8)
+    return nrm
 
-# 1. Bordas verticais
-ax.plot(X[0], Y[0], Z[0], 'k', linewidth=2)     # lado baixo (v0->v1)
-ax.plot(X[-1], Y[-1], Z[-1], 'k', linewidth=2)  # lado cima (v5->v6)
+rgb = np.zeros((n, n, 3))
+for i in range(n):
+    for j in range(n):
+        pos = np.array([X[i, j], Y[i, j], Z[i, j]])
+        normal = calc_normal(i, j)
+        to_light = light_pos - pos
+        to_light = to_light / np.linalg.norm(to_light)
+        to_view = view_pos - pos
+        to_view = to_view / np.linalg.norm(to_view)
+        ambient = ka * light_color
+        diff = kd * light_color * max(np.dot(normal, to_light), 0)
+        reflect_dir = 2 * np.dot(normal, to_light) * normal - to_light
+        spec_angle = max(np.dot(reflect_dir, to_view), 0)
+        spec = ks * light_color * (spec_angle ** shininess)
+        color = ambient + diff + spec
+        rgb[i, j, :] = np.clip(color, 0, 1)
 
-# 2. Bordas horizontais
-ax.plot(X[:,0], Y[:,0], Z[:,0], 'k', linewidth=2)     # lado esquerdo (v0->v5)
-ax.plot(X[:,-1], Y[:,-1], Z[:,-1], 'k', linewidth=2)  # lado direito (v1->v6)
+ax.plot_surface(X, Y, Z, facecolors=rgb, shade=False, alpha=0.95, edgecolor='none')
 
-# Rotaciona para facilitar a visualização
+# Arestras da face curva
+ax.plot(X[0], Y[0], Z[0], 'k', linewidth=2)
+ax.plot(X[-1], Y[-1], Z[-1], 'k', linewidth=2)
+ax.plot(X[:,0], Y[:,0], Z[:,0], 'k', linewidth=2)
+ax.plot(X[:,-1], Y[:,-1], Z[:,-1], 'k', linewidth=2)
+
 ax.view_init(elev=30, azim=45)
-
 comprimento = 3
 ax.quiver(0, 0, 0, comprimento, 0, 0, color='r', arrow_length_ratio=0.1)
 ax.quiver(0, 0, 0, 0, comprimento, 0, color='g', arrow_length_ratio=0.1)
@@ -95,5 +129,5 @@ ax.set_xlim(-3, 3)
 ax.set_ylim(-3, 3)
 ax.set_zlim(-1, 2)
 ax.set_box_aspect([1, 1, 1])
-ax.set_title("Prisma Pentagonal com Uma Face Lateral Curva (Encaixe Perfeito)")
+ax.set_title("Prisma Pentagonal com Uma Face Lateral Curva (Phong)")
 plt.show()
