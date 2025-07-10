@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
-# --------- Função de Sombreamento Phong ----------
 def sombreamento_phong_superficie(X, Y, Z, pos_luz, pos_observador, cor_luz, ka, kd, ks, brilho):
     """
     Aplica o modelo de sombreamento de Phong a uma superfície 3D definida pelas coordenadas X, Y e Z.
@@ -67,7 +66,6 @@ def sombreamento_phong_superficie(X, Y, Z, pos_luz, pos_observador, cor_luz, ka,
             rgb[i, j, :] = np.clip(cor, 0, 1)
     return rgb
 
-# --------- Restante do código ----------
 vertices = [
     (2, 0, 0),     # v1 - 0
     (1, 2, 0),     # v2 - 1
@@ -92,7 +90,7 @@ arestas_remover = [(0, 1), (1, 6), (6, 5), (5, 0)]
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-# Desenhar arestas (exceto as da face curva)
+# desenha arestas (exceto as da face curva)
 for (i, j) in arestas:
     if (i, j) in arestas_remover or (j, i) in arestas_remover:
         continue
@@ -101,7 +99,7 @@ for (i, j) in arestas:
     z = [vertices[i][2], vertices[j][2]]
     ax.plot(x, y, z, 'k', linewidth=2)
 
-# Face curva (lateral 1: v0-v1-v6-v5)
+# vértices da face curva
 v0 = np.array(vertices[0])
 v1 = np.array(vertices[1])
 v6 = np.array(vertices[6])
@@ -116,13 +114,14 @@ Y = []
 Z = []
 curvatura = 1.2
 
+# desenha a superfície curvada
 for i in range(n):
     linha = np.linspace(borda_baixo[i], borda_cima[i], n)
     t = np.linspace(0, 1, n)
     curva = curvatura * (t - 0.5)**2
     normal = np.cross(v1-v0, v5-v0)
     normal = normal / np.linalg.norm(normal)
-    deslocamento = curvatura * 0.25 # ajuste do deslocamento da curva para encaixar na face
+    deslocamento = curvatura * 0.25 # ajuste do deslocamento da curva para encaixar nas arestas da face
     linha_curva = linha - curva[:, None] * normal + deslocamento * normal
     X.append(linha_curva[:, 0])
     Y.append(linha_curva[:, 1])
