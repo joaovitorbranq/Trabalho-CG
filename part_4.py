@@ -4,6 +4,36 @@ import numpy as np
 
 # --------- Função de Sombreamento Phong ----------
 def sombreamento_phong_superficie(X, Y, Z, pos_luz, pos_observador, cor_luz, ka, kd, ks, brilho):
+    """
+    Aplica o modelo de sombreamento de Phong a uma superfície 3D definida pelas coordenadas X, Y e Z.
+
+    Este método calcula a cor de cada ponto da superfície utilizando os componentes ambiente, difuso e especular
+    do modelo de iluminação de Phong. A iluminação é feita considerando uma fonte de luz pontual e uma superfície polida.
+
+    Parâmetros:
+    ----------
+    X, Y, Z : np.ndarray
+        Matrizes 2D representando as coordenadas dos pontos da superfície em 3D.
+    pos_luz : np.ndarray
+        Vetor (x, y, z) com a posição da fonte de luz.
+    pos_observador : np.ndarray
+        Vetor (x, y, z) com a posição do observador (câmera).
+    cor_luz : np.ndarray
+        Cor da luz como vetor RGB com valores entre 0 e 1. (Ex: [1.0, 1.0, 0.3] para luz amarela)
+    ka : float
+        Coeficiente de refletância ambiente da superfície.
+    kd : float
+        Coeficiente de refletância difusa da superfície.
+    ks : float
+        Coeficiente de refletância especular da superfície.
+    brilho : float
+        Expoente de brilho (shininess) usado na reflexão especular. Quanto maior, mais focado é o brilho.
+
+    Retorno:
+    -------
+    np.ndarray
+        Matriz 3D (n, m, 3) contendo os valores de cor RGB calculados para cada ponto da superfície.
+    """
     n, m = X.shape
     rgb = np.zeros((n, m, 3))
 
