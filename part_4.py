@@ -3,12 +3,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
 # --------- Função de Sombreamento Phong ----------
-def phong_shading_surface(X, Y, Z, light_pos, view_pos, light_color, ka, kd, ks, shininess):
+def sombreamento_phong_superficie(X, Y, Z, pos_luz, pos_observador, cor_luz, ka, kd, ks, brilho):
     n, m = X.shape
     rgb = np.zeros((n, m, 3))
 
-    def calc_normal(i, j):
-        # Vetores tangentes locais
+    def calcula_normal(i, j):
         if i < n-1:
             dXdi = np.array([X[i+1,j]-X[i,j], Y[i+1,j]-Y[i,j], Z[i+1,j]-Z[i,j]])
         else:
@@ -17,25 +16,25 @@ def phong_shading_surface(X, Y, Z, light_pos, view_pos, light_color, ka, kd, ks,
             dXdj = np.array([X[i,j+1]-X[i,j], Y[i,j+1]-Y[i,j], Z[i,j+1]-Z[i,j]])
         else:
             dXdj = np.array([X[i,j]-X[i,j-1], Y[i,j]-Y[i,j-1], Z[i,j]-Z[i,j-1]])
-        nrm = np.cross(dXdi, dXdj)
-        nrm = nrm / (np.linalg.norm(nrm) + 1e-8)
-        return nrm
+        normal = np.cross(dXdi, dXdj)
+        normal = normal / (np.linalg.norm(normal) + 1e-8)
+        return normal
 
     for i in range(n):
         for j in range(m):
-            pos = np.array([X[i, j], Y[i, j], Z[i, j]])
-            normal = calc_normal(i, j)
-            to_light = light_pos - pos
-            to_light = to_light / np.linalg.norm(to_light)
-            to_view = view_pos - pos
-            to_view = to_view / np.linalg.norm(to_view)
-            ambient = ka * light_color
-            diff = kd * light_color * max(np.dot(normal, to_light), 0)
-            reflect_dir = 2 * np.dot(normal, to_light) * normal - to_light
-            spec_angle = max(np.dot(reflect_dir, to_view), 0)
-            spec = ks * light_color * (spec_angle ** shininess)
-            color = ambient + diff + spec
-            rgb[i, j, :] = np.clip(color, 0, 1)
+            posicao = np.array([X[i, j], Y[i, j], Z[i, j]])
+            normal = calcula_normal(i, j)
+            para_luz = pos_luz - posicao
+            para_luz = para_luz / np.linalg.norm(para_luz)
+            para_observador = pos_observador - posicao
+            para_observador = para_observador / np.linalg.norm(para_observador)
+            ambiente = ka * cor_luz
+            difusa = kd * cor_luz * max(np.dot(normal, para_luz), 0)
+            reflexao = 2 * np.dot(normal, para_luz) * normal - para_luz
+            angulo_especular = max(np.dot(reflexao, para_observador), 0)
+            especular = ks * cor_luz * (angulo_especular ** brilho)
+            cor = ambiente + difusa + especular
+            rgb[i, j, :] = np.clip(cor, 0, 1)
     return rgb
 
 # --------- Restante do código ----------
@@ -79,8 +78,8 @@ v6 = np.array(vertices[6])
 v5 = np.array(vertices[5])
 
 n = 40
-baixo = np.linspace(v0, v1, n)
-cima  = np.linspace(v5, v6, n)
+borda_baixo = np.linspace(v0, v1, n)
+borda_cima  = np.linspace(v5, v6, n)
 
 X = []
 Y = []
@@ -88,13 +87,13 @@ Z = []
 curvatura = 1.2
 
 for i in range(n):
-    linha = np.linspace(baixo[i], cima[i], n)
+    linha = np.linspace(borda_baixo[i], borda_cima[i], n)
     t = np.linspace(0, 1, n)
     curva = curvatura * (t - 0.5)**2
     normal = np.cross(v1-v0, v5-v0)
     normal = normal / np.linalg.norm(normal)
-    offset = curvatura * 0.25
-    linha_curva = linha - curva[:, None] * normal + offset * normal
+    deslocamento = curvatura * 0.25 # ajuste do deslocamento da curva para encaixar na face
+    linha_curva = linha - curva[:, None] * normal + deslocamento * normal
     X.append(linha_curva[:, 0])
     Y.append(linha_curva[:, 1])
     Z.append(linha_curva[:, 2])
@@ -104,19 +103,19 @@ Y = np.array(Y)
 Z = np.array(Z)
 
 # --------- Parâmetros da luz/material (Phong) ---------
-light_pos = np.array([3, 3, 5])
-light_color = np.array([1.0, 1.0, 0.3])  # Amarelado
+pos_luz = np.array([3, 3, 5])
+cor_luz = np.array([1.0, 1.0, 0.3])  # Amarelado
 ka = 0.15
 kd = 0.6
 ks = 0.8
-shininess = 30
-view_pos = np.array([0, 0, 8])
+brilho = 30
+pos_observador = np.array([0, 0, 8])
 
 # --------- Cores com Phong ---------
-rgb = phong_shading_surface(X, Y, Z, light_pos, view_pos, light_color, ka, kd, ks, shininess)
-ax.plot_surface(X, Y, Z, facecolors=rgb, shade=False, alpha=0.95, edgecolor='none')
+cores = sombreamento_phong_superficie(X, Y, Z, pos_luz, pos_observador, cor_luz, ka, kd, ks, brilho)
+ax.plot_surface(X, Y, Z, facecolors=cores, shade=False, alpha=0.95, edgecolor='none')
 
-# --------- Arestras da face curva ---------
+# --------- Arestas da face curva ---------
 ax.plot(X[0], Y[0], Z[0], 'k', linewidth=2)
 ax.plot(X[-1], Y[-1], Z[-1], 'k', linewidth=2)
 ax.plot(X[:,0], Y[:,0], Z[:,0], 'k', linewidth=2)
