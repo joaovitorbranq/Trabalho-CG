@@ -118,7 +118,7 @@ curvatura = 1.2
 for i in range(n):
     linha = np.linspace(borda_baixo[i], borda_cima[i], n)
     t = np.linspace(0, 1, n)
-    curva = curvatura * (t - 0.5)**2
+    curva = curvatura * (t - 0.5)**2 # curva parabólica
     normal = np.cross(v1-v0, v5-v0)
     normal = normal / np.linalg.norm(normal)
     deslocamento = curvatura * 0.25 # ajuste do deslocamento da curva para encaixar nas arestas da face
@@ -163,5 +163,5 @@ ax.set_xlim(-3, 3)
 ax.set_ylim(-3, 3)
 ax.set_zlim(-1, 2)
 ax.set_box_aspect([1, 1, 1])
-ax.set_title("Prisma Pentagonal com Uma Face Lateral Curva (Phong)")
+ax.set_title("Prisma Pentagonal com superfície curvada e sombreamento phong")
 plt.show()
